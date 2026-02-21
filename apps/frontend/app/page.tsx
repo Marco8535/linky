@@ -19,8 +19,12 @@ export default function RootPage() {
   }, []);
 
   const handleGoogleLogin = () => {
-    const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    auth.signIn.social({ provider: 'google', callbackURL: `${frontendUrl}/edit` });
+    // Use server-side proxy route to avoid cross-origin cookie issues.
+    // The proxy POSTs to the API, forwards the state cookie, and redirects to Google.
+    const callbackURL = encodeURIComponent(
+      `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/edit`
+    );
+    window.location.href = `/api/auth/social-redirect?provider=google&callbackURL=${callbackURL}`;
   };
 
   if (isLoading) {
