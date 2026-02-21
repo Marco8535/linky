@@ -19,7 +19,8 @@ export default function RootPage() {
   }, []);
 
   const handleGoogleLogin = () => {
-    auth.signIn.social({ provider: 'google', callbackURL: '/edit' });
+    const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    auth.signIn.social({ provider: 'google', callbackURL: `${frontendUrl}/edit` });
   };
 
   if (isLoading) {
