@@ -65,7 +65,9 @@ export const auth = betterAuth({
       secure: true,
       httpOnly: true,
       sameSite: 'none', // Allows CORS-based cookie sharing across subdomains
-      partitioned: true, // Required by Chrome for SameSite=None cookies
+      // NOTE: partitioned removed — CHIPS partitioning can interfere with
+      // cross-subdomain session cookies during top-level navigation redirects.
+      // SameSite=None + Secure is sufficient for our cross-subdomain setup.
     },
   },
   session: {

@@ -8,13 +8,25 @@ export async function GET(request: Request) {
   const showTeamOnboarding = searchParams.get('showTeamOnboarding');
   const showPremiumOnboarding = searchParams.get('showPremiumOnboarding');
 
+  // --- DEBUG: trace cookie flow (remove after auth is working) ---
+  const reqHeaders = await headers();
+  const cookieHeader = reqHeaders.get('cookie');
+  console.log('[/edit] Cookie header present:', !!cookieHeader);
+  console.log('[/edit] Cookie names:', cookieHeader?.split(';').map(c => c.trim().split('=')[0]).join(', ') || 'NONE');
+  // --- END DEBUG ---
+
   const session = await getSession({
-    fetchOptions: { headers: await headers() },
+    fetchOptions: { headers: reqHeaders },
   });
+
+  // --- DEBUG ---
+  console.log('[/edit] getSession result:', JSON.stringify({ user: session?.data?.user?.email, orgId: session?.data?.session?.activeOrganizationId, hasData: !!session?.data }));
+  // --- END DEBUG ---
 
   const { user, session: sessionData } = session?.data ?? {};
 
   if (!user || !sessionData?.activeOrganizationId) {
+    console.log('[/edit] Redirecting to / — user:', !!user, 'orgId:', sessionData?.activeOrganizationId);
     return redirect('/');
   }
 
