@@ -12,7 +12,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
 # Copy workspace root manifests
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.json ./
 
 # Copy only the package.json files pnpm needs for install
 COPY apps/api/package.json apps/api/
