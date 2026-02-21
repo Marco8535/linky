@@ -32,6 +32,9 @@ COPY apps/api/ apps/api/
 # Generate Prisma client (ARM64 binaries inside the container)
 RUN pnpm --filter @trylinky/prisma run prisma:generate
 
+# Ensure sharp native addon is installed for ARM64
+RUN pnpm rebuild sharp
+
 # Build API with production script (no dotenv-run — keeps process.env at runtime)
 RUN cd apps/api && node build.production.js
 
