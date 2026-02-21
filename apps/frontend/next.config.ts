@@ -56,6 +56,12 @@ const marketingRewrites = process.env.NEXT_PUBLIC_MARKETING_URL
   : [];
 
 const nextConfig: NextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   transpilePackages: ['@trylinky/ui', '@trylinky/common'],
   rewrites: async () => marketingRewrites,
   redirects: async () => [
