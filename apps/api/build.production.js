@@ -13,5 +13,6 @@ await build({
   // preserved so they resolve at runtime from the container environment.
   plugins: [],
   // Mark native addons as external so they load from node_modules at runtime
-  external: ['sharp', '@prisma/client', '*.node'],
+  // sharp has .node binary that can't be bundled; prisma client is bundled fine
+  external: ['sharp', '*.node'],
 });
