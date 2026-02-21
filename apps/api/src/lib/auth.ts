@@ -21,6 +21,13 @@ export const auth = betterAuth({
     max: 100, // max requests in the window
   },
   trustedOrigins,
+  account: {
+    // Skip state cookie check for OAuth — cross-subdomain cookie delivery
+    // is unreliable (frontend on links.amalgamagastro.com, API on
+    // linky-api.amalgamagastro.com). State is still validated via DB
+    // Verification records + PKCE code_challenge.
+    skipStateCookieCheck: true,
+  },
   database: prismaAdapter(prisma as PrismaClient, {
     provider: 'postgresql',
   }),
@@ -58,6 +65,7 @@ export const auth = betterAuth({
       secure: true,
       httpOnly: true,
       sameSite: 'none', // Allows CORS-based cookie sharing across subdomains
+      partitioned: true, // Required by Chrome for SameSite=None cookies
     },
   },
   session: {
