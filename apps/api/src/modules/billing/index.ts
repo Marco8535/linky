@@ -35,6 +35,41 @@ export default async function billingRoutes(
   fastify: FastifyInstance,
   opts: any
 ) {
+  if (!process.env.STRIPE_API_SECRET_KEY) {
+    // Self-hosted mode: mock billing routes that grant premium to everyone
+    fastify.post('/stripe-webhook', async (_request, reply) => {
+      return reply.status(200).send({ ok: true });
+    });
+    fastify.get('/subscription/me', async (_request, reply) => {
+      return reply.send({
+        plan: 'team',
+        status: 'active',
+        seats: 99,
+        periodEnd: '2099-12-31T00:00:00.000Z',
+        cancelAtPeriodEnd: false,
+      });
+    });
+    fastify.get('/upgrade-eligibility', async (_request, reply) => {
+      return reply.send({ eligible: false });
+    });
+    fastify.post('/get-billing-portal-url', async (_request, reply) => {
+      return reply.send({ url: null });
+    });
+    fastify.post('/cancel-subscription', async (_request, reply) => {
+      return reply.status(200).send({ ok: true });
+    });
+    fastify.post('/upgrade-trial', async (_request, reply) => {
+      return reply.status(200).send({ ok: true });
+    });
+    fastify.post('/upgrade/team', async (_request, reply) => {
+      return reply.status(200).send({ ok: true });
+    });
+    fastify.post('/upgrade/premium', async (_request, reply) => {
+      return reply.status(200).send({ ok: true });
+    });
+    return;
+  }
+
   fastify.post(
     '/stripe-webhook',
     { config: { rawBody: true } },

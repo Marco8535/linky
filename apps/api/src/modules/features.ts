@@ -3,7 +3,7 @@
  */
 export const config = {
   slack: {
-    enabled: true,
+    enabled: !!process.env.SLACK_TOKEN,
   },
   posthog: {
     enabled: true,

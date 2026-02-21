@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────
+# Stage 1: Builder — install deps, generate Prisma, bundle API
+# ─────────────────────────────────────────────
+FROM node:20-slim AS builder
+
+RUN apt-get update && \
+    apt-get install -y openssl python3 make g++ && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+WORKDIR /app
+
+# Copy workspace root manifests
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+
+# Copy only the package.json files pnpm needs for install
+COPY apps/api/package.json apps/api/
+COPY packages/prisma/package.json packages/prisma/
+COPY packages/common/package.json packages/common/
+COPY packages/blocks/package.json packages/blocks/
+COPY packages/notifications/package.json packages/notifications/
+COPY packages/tinybird/package.json packages/tinybird/
+COPY packages/ui/package.json packages/ui/
+
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY packages/ packages/
+COPY apps/api/ apps/api/
+
+# Generate Prisma client (ARM64 binaries inside the container)
+RUN pnpm --filter @trylinky/prisma run prisma:generate
+
+# Build API with production script (no dotenv-run — keeps process.env at runtime)
+RUN cd apps/api && node build.production.js
+
+# ─────────────────────────────────────────────
+# Stage 2: Runtime — minimal image with only what's needed
+# ─────────────────────────────────────────────
+FROM node:20-slim AS runtime
+
+RUN apt-get update && \
+    apt-get install -y openssl libvips-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Bundled API output
+COPY --from=builder /app/apps/api/dist ./dist
+
+# node_modules for native addons (sharp, prisma engine, pg, etc.)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Prisma generated client + schema (needed by @prisma/client at runtime)
+COPY --from=builder /app/packages/prisma/src/generated ./packages/prisma/src/generated
+COPY --from=builder /app/packages/prisma/prisma ./packages/prisma/prisma
+
+ENV NODE_ENV=production
+ENV PORT=3001
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+  CMD node -e "fetch('http://localhost:3001/').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+
+CMD ["node", "dist/index.js"]

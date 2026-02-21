@@ -8,17 +8,20 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { captureException } from '@sentry/node';
 
-const client = new DynamoDBClient({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
-  },
-});
-
-const dynamoDb = DynamoDBDocumentClient.from(client);
-
 const TABLE_NAME = process.env.REACTIONS_TABLE_NAME;
+
+// Only initialize DynamoDB client if REACTIONS_TABLE_NAME is configured
+const dynamoDb = TABLE_NAME
+  ? DynamoDBDocumentClient.from(
+      new DynamoDBClient({
+        region: process.env.AWS_REGION,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+        },
+      })
+    )
+  : null;
 
 const MAX_ALLOWED_REACTIONS_PER_IP = 16;
 
@@ -39,6 +42,13 @@ export async function getReactionsForPageId({
     [reactionType: string]: number;
   };
 }> {
+  if (!dynamoDb || !TABLE_NAME) {
+    return {
+      total: { [REACTION_TYPE]: 0 },
+      current: { [REACTION_TYPE]: 0 },
+    };
+  }
+
   const params = {
     RequestItems: {
       [TABLE_NAME as string]: {
@@ -96,6 +106,10 @@ export async function incrementReaction({
   increment: number;
   ipAddress: string;
 }) {
+  if (!dynamoDb || !TABLE_NAME) {
+    return;
+  }
+
   // Helper function to initialize and increment a reaction map with better error handling
   async function updateReactionMap({
     sk,
@@ -165,6 +179,13 @@ export async function reactToResource(
   increment: number,
   ipAddress: string
 ) {
+  if (!dynamoDb || !TABLE_NAME) {
+    return {
+      total: { [REACTION_TYPE]: 0 },
+      current: { [REACTION_TYPE]: 0 },
+    };
+  }
+
   const currentReactionsForPage = await getReactionsForPageId({
     pageId,
     ipAddress,
