@@ -59,6 +59,11 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/prisma/src/generated ./packages/prisma/src/generated
 COPY --from=builder /app/packages/prisma/prisma ./packages/prisma/prisma
 
+# Restore pnpm symlinks that Docker COPY doesn't preserve (native addons)
+# sharp is marked as external in esbuild — Node needs it resolvable from dist/
+RUN SHARP_DIR=$(ls -d node_modules/.pnpm/sharp@*/node_modules/sharp | head -1) && \
+    ln -s "$SHARP_DIR" node_modules/sharp
+
 ENV NODE_ENV=production
 ENV PORT=3001
 EXPOSE 3001
