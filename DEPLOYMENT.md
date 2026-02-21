@@ -119,8 +119,8 @@ DIRECT_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=
      ```
 5. Copiar:
    ```
-   GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
+   AUTH_GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
+   AUTH_GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
    ```
 
 > **Nota**: Si la app esta en "Testing", solo usuarios agregados manualmente pueden hacer login. Para produccion, publicar la app (requiere verificacion de Google si usas scopes sensibles, pero email/profile/openid no lo requieren).
@@ -270,10 +270,10 @@ DIRECT_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=
    - Create access key (Use case: Application running outside AWS)
 5. Copiar:
    ```
-   S3_ACCESS_KEY=AKIAxxxxxxxxxxxxxxxx
-   S3_SECRET_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   S3_BUCKET=linky-amalgama-uploads
-   S3_REGION=us-east-1
+   AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx
+   AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   S3_BUCKET_NAME=linky-amalgama-uploads
+   AWS_REGION=us-east-1
    ```
 
 ---
@@ -289,12 +289,13 @@ DIRECT_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=
    - **Install Command**: `pnpm install`
 4. **Settings → Environment Variables**: Agregar todas las variables del frontend:
    ```
-   NEXT_PUBLIC_APP_URL=https://links.tudominio.com
+   NEXT_PUBLIC_BASE_URL=https://links.tudominio.com
    NEXT_PUBLIC_API_URL=https://api.tudominio.com
    NEXT_PUBLIC_POSTHOG_KEY=phc_xxx
    NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
    NEXT_PUBLIC_SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
    NEXT_PUBLIC_TINYBIRD_TRACKER_TOKEN=e.eyJ...
+   ENCRYPTION_KEY=<generar con: openssl rand -hex 16>
    SENTRY_AUTH_TOKEN=sntrys_xxx
    SENTRY_ORG=amalgama
    SENTRY_PROJECT=linky-frontend
@@ -351,22 +352,23 @@ DIRECT_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=
 
 # === Auth ===
 BETTER_AUTH_SECRET=<generar con: openssl rand -base64 32>
-GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
+AUTH_GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
+AUTH_GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
+AUTH_COOKIE_DOMAIN=.tudominio.com
 
 # === URLs ===
-APP_URL=https://links.tudominio.com
-API_URL=https://api.tudominio.com
-FRONTEND_URL=https://links.tudominio.com
+API_BASE_URL=https://api.tudominio.com
+APP_FRONTEND_URL=https://links.tudominio.com
+NEXT_PUBLIC_API_URL=https://api.tudominio.com
 
 # === Cloudflare Tunnel ===
 CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoixxxxxxxxx...
 
 # === AWS S3 ===
-S3_ACCESS_KEY=AKIAxxxxxxxxxxxxxxxx
-S3_SECRET_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-S3_BUCKET=linky-amalgama-uploads
-S3_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx
+AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+S3_BUCKET_NAME=linky-amalgama-uploads
+AWS_REGION=us-east-1
 
 # === Email ===
 RESEND_API_KEY=re_xxxxxxxxxx
@@ -634,10 +636,14 @@ find /opt/linky/backups/ -name "*.dump" -mtime +30 -delete
 **Causa**: Las cookies de sesion requieren que `APP_URL` y `API_URL` esten en el mismo dominio raiz, o que la configuracion de cookies permita cross-domain.
 
 **Solucion**:
-1. Verificar que `APP_URL` y `API_URL` usan el mismo dominio raiz:
+1. Verificar que `APP_FRONTEND_URL` y `API_BASE_URL` usan el mismo dominio raiz:
    ```
-   APP_URL=https://links.tudominio.com   # OK - mismo dominio
-   API_URL=https://api.tudominio.com     # OK - mismo dominio
+   APP_FRONTEND_URL=https://links.tudominio.com   # OK - mismo dominio
+   API_BASE_URL=https://api.tudominio.com          # OK - mismo dominio
+   ```
+2. Verificar que `AUTH_COOKIE_DOMAIN` esta configurado correctamente:
+   ```
+   AUTH_COOKIE_DOMAIN=.tudominio.com   # Nota: empieza con punto
    ```
 2. Revisar `TRUSTED_ORIGINS` incluye el frontend URL
 3. Verificar que Cloudflare no esta strippeando headers `Set-Cookie`
@@ -751,23 +757,30 @@ DIRECT_URL=
 
 # Auth
 BETTER_AUTH_SECRET=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
+AUTH_GOOGLE_CLIENT_ID=
+AUTH_GOOGLE_CLIENT_SECRET=
+AUTH_TWITTER_CLIENT_ID=
+AUTH_TWITTER_CLIENT_SECRET=
+AUTH_TIKTOK_CLIENT_KEY=
+AUTH_TIKTOK_CLIENT_SECRET=
+AUTH_COOKIE_DOMAIN=
 
 # URLs
-APP_URL=
-API_URL=
-FRONTEND_URL=
+API_BASE_URL=
+APP_FRONTEND_URL=
 TRUSTED_ORIGINS=
 
 # Cloudflare
 CLOUDFLARE_TUNNEL_TOKEN=
 
 # AWS S3
-S3_ACCESS_KEY=
-S3_SECRET_KEY=
-S3_BUCKET=
-S3_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+S3_BUCKET_NAME=
+AWS_REGION=
+
+# Encryption
+ENCRYPTION_KEY=
 
 # Email
 RESEND_API_KEY=
@@ -785,12 +798,13 @@ DYNAMODB_ENABLED=false
 ### Frontend (Vercel env vars)
 
 ```env
-NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_BASE_URL=
 NEXT_PUBLIC_API_URL=
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=
 NEXT_PUBLIC_SENTRY_DSN=
 NEXT_PUBLIC_TINYBIRD_TRACKER_TOKEN=
+ENCRYPTION_KEY=
 SENTRY_AUTH_TOKEN=
 SENTRY_ORG=
 SENTRY_PROJECT=
