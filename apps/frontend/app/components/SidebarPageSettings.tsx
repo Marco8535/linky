@@ -29,6 +29,7 @@ export function SidebarPageSettings() {
               metaTitle: pageSettings?.metaTitle ?? '',
               pageSlug: pageSettings?.slug ?? '',
               published: pageSettings?.publishedAt ? true : false,
+              customDomain: (pageSettings as any)?.customDomain ?? '',
             }}
             pageId={pageSettings?.id ?? ''}
           />

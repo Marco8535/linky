@@ -327,7 +327,7 @@ async function createPageHandler(
     },
   });
 
-  const maxNumberOfPages = 100;
+  const maxNumberOfPages = 10000;
 
   if (teamPages.length >= maxNumberOfPages) {
     if (user?.role !== 'ADMIN') {

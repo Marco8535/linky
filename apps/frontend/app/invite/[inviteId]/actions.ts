@@ -51,13 +51,7 @@ export async function acceptInvite(invitationId: string) {
       },
     });
 
-    if (org?.members && org?.subscription?.seats) {
-      if (org.members.length >= org.subscription.seats) {
-        return {
-          error: 'You have reached the maximum number of seats for your plan',
-        };
-      }
-    }
+    // Seat limit removed for self-hosted
 
     return {
       success: true,

@@ -132,7 +132,7 @@ async function postCreateBlockHandler(
     },
   });
 
-  const maxNumberOfBlocks = 100;
+  const maxNumberOfBlocks = 10000;
   if (page.blocks.length >= maxNumberOfBlocks) {
     return response.status(400).send({
       error: {

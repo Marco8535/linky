@@ -71,7 +71,7 @@ export async function createNewSubscription({
     subscriptionId = `self-hosted-${referenceId}`;
   }
 
-  const DEFAULT_SEATS = plan === 'team' ? 5 : 1;
+  const DEFAULT_SEATS = plan === 'team' ? 99 : 99;
 
   const [subscriptionError, subscription] = await safeAwait(
     prisma.subscription.create({

@@ -32,6 +32,7 @@ export type FormValues = {
   pageSlug: string;
   metaTitle: string;
   published: boolean;
+  customDomain: string;
 };
 
 interface Props {
@@ -129,6 +130,7 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
           pageSlug: initialValues.pageSlug,
           metaTitle: initialValues.metaTitle,
           published: initialValues.published,
+          customDomain: initialValues.customDomain || '',
         }}
         validate={withZodSchema(generalPageSettingsSchema)}
         onSubmit={onSubmit}
@@ -146,15 +148,16 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
                   id="pageSlug"
                   error={errors.pageSlug}
                 />
-                <div className="hidden px-3 py-4 rounded-lg ring-1 ring-black/10 relative bg-[#fffbec] flex flex-col gap-1">
-                  <span className="text-sm text-black font-semibold">
-                    Custom Domain 👀
-                  </span>
-                  <span className="text-sm text-black">
-                    Add a custom domain to your page for a one-time fee of{' '}
-                    <del>$10</del> <ins className="font-semibold">$5</ins>. This
-                    feature is still in beta, and you can enable it by reaching
-                    out to us at <a href="mailto:team@lin.ky">team@lin.ky</a>.
+                <div className="mt-4">
+                  <FormField
+                    label="Custom Domain"
+                    name="customDomain"
+                    placeholder="www.midominio.com"
+                    id="customDomain"
+                    error={errors.customDomain}
+                  />
+                  <span className="text-xs text-muted-foreground mt-1 block">
+                    Point your domain CNAME to cname.vercel-dns.com and add it in Vercel.
                   </span>
                 </div>
               </div>

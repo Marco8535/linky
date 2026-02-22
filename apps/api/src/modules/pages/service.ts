@@ -119,6 +119,7 @@ export async function getPageSettings(pageId: string) {
       backgroundImage: true,
       themeId: true,
       verifiedAt: true,
+      customDomain: true,
     },
   });
 
