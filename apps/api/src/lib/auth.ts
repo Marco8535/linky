@@ -72,8 +72,9 @@ export const auth = betterAuth({
   },
   session: {
     cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60, // Cache duration in seconds
+      enabled: false, // Disabled — cookie cache can't be decoded by the
+      // frontend server (Vercel) since it doesn't have AUTH_SECRET.
+      // getSession() must always call the API to validate sessions.
     },
   },
   emailAndPassword: {
