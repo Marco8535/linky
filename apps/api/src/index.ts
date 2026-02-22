@@ -109,6 +109,16 @@ fastify.route({
       // Construct request URL
       const url = new URL(request.url, `http://${request.headers.host}`);
 
+      // --- DEBUG: exhaustive auth logging ---
+      const authPath = url.pathname.replace('/api/auth/', '');
+      const cookieHeader = request.headers.cookie || '';
+      const cookieNames = cookieHeader.split(';').map((c: string) => c.trim().split('=')[0]).filter(Boolean);
+      console.log(`[AUTH] ${request.method} /api/auth/${authPath}`);
+      console.log(`[AUTH] Cookies received: [${cookieNames.join(', ')}]`);
+      console.log(`[AUTH] Origin: ${request.headers.origin || 'none'}`);
+      console.log(`[AUTH] Host: ${request.headers.host}`);
+      // --- END DEBUG ---
+
       // Convert Fastify headers to standard Headers object
       const headers = new Headers();
       Object.entries(request.headers).forEach(([key, value]) => {
@@ -122,11 +132,37 @@ fastify.route({
       });
       // Process authentication request
       const response = await auth.handler(req);
+
+      // --- DEBUG: log auth response ---
+      const responseText = response.body ? await response.text() : null;
+      const setCookies: string[] = [];
+      response.headers.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie') setCookies.push(value);
+      });
+      console.log(`[AUTH] Response status: ${response.status}`);
+      if (setCookies.length > 0) {
+        console.log(`[AUTH] Set-Cookie headers (${setCookies.length}):`);
+        setCookies.forEach(c => {
+          const name = c.split('=')[0];
+          const attrs = c.split(';').slice(1).map((a: string) => a.trim()).join('; ');
+          console.log(`[AUTH]   ${name} → ${attrs}`);
+        });
+      }
+      if (authPath.startsWith('get-session')) {
+        console.log(`[AUTH] get-session response body: ${responseText?.substring(0, 500)}`);
+      }
+      if (authPath.startsWith('callback')) {
+        const location = response.headers.get('location');
+        console.log(`[AUTH] callback redirect location: ${location}`);
+      }
+      // --- END DEBUG ---
+
       // Forward response to client
       reply.status(response.status);
       response.headers.forEach((value, key) => reply.header(key, value));
-      reply.send(response.body ? await response.text() : null);
+      reply.send(responseText);
     } catch (error) {
+      console.error('[AUTH] ERROR:', error);
       fastify.log.error('Authentication Error:', error);
       reply.status(500).send({
         error: 'Internal authentication error',
