@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { isAdminUser } from '@/lib/roles';
 import { blocks, Blocks } from '@trylinky/blocks';
 import { Prisma, User } from '@trylinky/prisma';
 
@@ -63,7 +64,7 @@ export async function getEnabledBlocks(user: Pick<User, 'role'>) {
 
   Object.entries(blocks).forEach(([key, block]) => {
     if (block.isBeta) {
-      if (user?.role === 'admin') {
+      if (isAdminUser(user)) {
         enabledBlocks.push(key as Blocks);
       }
     } else {
@@ -104,7 +105,9 @@ export async function deleteBlockById(id: string, userId: string) {
   const userHasAccess = await checkUserHasAccessToBlock(id, userId);
 
   if (!userHasAccess) {
-    return new Error('User does not have access to this block');
+    // Returning the error meant the caller saw a truthy value it ignored and
+    // the delete went ahead anyway.
+    throw new Error('User does not have access to this block');
   }
 
   const deletedBlock = await prisma.block.delete({
@@ -167,7 +170,7 @@ export async function updateBlockData(blockId: string, newData: object) {
     });
 
     return updatedBlock;
-  } catch (error) {
+  } catch {
     throw new Error('Error updating block data');
   }
 }

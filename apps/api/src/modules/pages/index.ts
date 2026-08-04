@@ -29,6 +29,7 @@ import {
   pageSlugCacheTag,
   revalidatePageCache,
 } from '@/lib/revalidate';
+import { isAdminUser } from '@/lib/roles';
 import {
   getPageLoadHandler,
   getPageLoadSchema,
@@ -39,10 +40,11 @@ import {
   getSlugAvailabilityHandler,
   getSlugAvailabilitySchema,
 } from '@/modules/pages/handlers/get-slug-availability';
+import { captureException } from '@sentry/node';
 import { FastifyInstance, FastifyReply } from 'fastify';
 import { FastifyRequest } from 'fastify';
 
-export default async function pagesRoutes(fastify: FastifyInstance, opts: any) {
+export default async function pagesRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/me',
     { schema: getCurrentUserTeamPagesSchema },
@@ -329,7 +331,7 @@ async function createPageHandler(
       },
     });
 
-    if (user?.role !== 'ADMIN') {
+    if (!isAdminUser(user)) {
       return response.status(400).send({
         error: {
           message: 'You have reached the maximum number of pages',
@@ -343,7 +345,6 @@ async function createPageHandler(
     const res = await createNewPage({
       slug,
       themeId,
-      userId: session.user.id,
       organizationId: session.activeOrganizationId,
     });
 
@@ -364,8 +365,16 @@ async function createPageHandler(
       slug: res.slug,
     });
   } catch (error) {
-    console.log('error', error);
-    return response.status(400).send(error);
+    // Don't hand the raw error back to the caller — it can carry stack traces
+    // and database detail.
+    request.log.error({ err: error }, 'Failed to create page');
+    captureException(error);
+
+    return response.status(400).send({
+      error: {
+        message: 'Sorry, there was an error creating this page',
+      },
+    });
   }
 }
 

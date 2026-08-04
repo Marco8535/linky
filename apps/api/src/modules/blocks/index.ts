@@ -1,6 +1,7 @@
 'use strict';
 
 import {
+  createBlockSchema,
   deleteBlockSchema,
   getBlockSchema,
   getEnabledBlockSchema,
@@ -24,11 +25,8 @@ import {
 import { FastifyInstance, FastifyReply } from 'fastify';
 import { FastifyRequest } from 'fastify';
 
-export default async function blocksRoutes(
-  fastify: FastifyInstance,
-  opts: any
-) {
-  fastify.post('/add', postCreateBlockHandler);
+export default async function blocksRoutes(fastify: FastifyInstance) {
+  fastify.post('/add', { schema: createBlockSchema }, postCreateBlockHandler);
   fastify.get('/:blockId', { schema: getBlockSchema }, getBlockHandler);
   fastify.delete(
     '/:blockId',
@@ -105,7 +103,7 @@ async function postCreateBlockHandler(
     where: {
       deletedAt: null,
       organization: {
-        id: session.currentOrganizationId,
+        id: session.activeOrganizationId,
         members: {
           some: {
             userId: session.user.id,
@@ -259,7 +257,7 @@ async function deleteBlockHandler(
     return response.status(200).send({
       message: 'Block deleted',
     });
-  } catch (error) {
+  } catch {
     return response.status(400).send({
       error: {
         message: 'Sorry, there was an error deleting this block',
@@ -299,7 +297,7 @@ async function updateBlockDataHandler(
       id: updatedBlock.id,
       updatedAt: updatedBlock.updatedAt,
     });
-  } catch (error) {
+  } catch {
     return response.status(400).send({
       error: {
         message: 'Error updating block data',

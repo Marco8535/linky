@@ -7,7 +7,8 @@ import marketingRoutes from './modules/marketing';
 import pagesRoutes from './modules/pages';
 import tiktokServiceRoutes from './modules/services/tiktok';
 import { authenticateDecorator } from '@/decorators/authenticate';
-import { trustedOrigins } from '@/lib/origins';
+import { authenticateApiKeyDecorator } from '@/decorators/authenticate-api-key';
+import { isTrustedOrigin } from '@/lib/origins';
 import analyticsRoutes from '@/modules/analytics';
 import assetsRoutes from '@/modules/assets';
 import billingRoutes from '@/modules/billing';
@@ -22,18 +23,39 @@ import spotifyServiceRoutes from '@/modules/services/spotify';
 import threadsServiceRoutes from '@/modules/services/threads';
 import themesRoutes from '@/modules/themes';
 import fastifyCompress from '@fastify/compress';
-import cors from '@fastify/cors';
+import cors, { FastifyCorsOptions } from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import fastifySensible from '@fastify/sensible';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import * as Sentry from '@sentry/node';
 import 'dotenv/config';
-import Fastify, { FastifyInstance } from 'fastify';
-import FastifyBetterAuth from 'fastify-better-auth';
+import Fastify, { FastifyInstance, FastifyRequest } from 'fastify';
 import fastifyRawBody from 'fastify-raw-body';
 
-export const fastify: FastifyInstance =
-  Fastify().withTypeProvider<TypeBoxTypeProvider>();
+export const fastify: FastifyInstance = Fastify({
+  /**
+   * Fastify's logger defaults to false, which makes `fastify.log.*` a silent
+   * no-op — the boot failure handler and the /api/auth error branch were both
+   * writing to nowhere.
+   *
+   * Per-request logging stays off so this doesn't suddenly add two lines per
+   * request to the hosted deployment's log volume; the slow-request hook below
+   * already covers the interesting case. Set LOG_REQUESTS=true to turn it on.
+   */
+  logger: {
+    level: process.env.LOG_LEVEL ?? 'info',
+    redact: {
+      paths: [
+        'req.headers.cookie',
+        'req.headers.authorization',
+        'req.headers["x-api-key"]',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '[redacted]',
+    },
+  },
+  disableRequestLogging: process.env.LOG_REQUESTS !== 'true',
+}).withTypeProvider<TypeBoxTypeProvider>();
 
 await fastify.register(fastifyCompress);
 await fastify.register(fastifySensible);
@@ -52,14 +74,35 @@ await fastify.register(fastifyMultipart, {
   },
 });
 
-await fastify.register(cors, {
-  origin: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
-  exposedHeaders: ['Content-Length'], // Expose specific headers
-  credentials: true,
-  maxAge: 86400, // Cache preflight response for 24 hours
-});
+/**
+ * CORS is decided per request, because the API serves two different kinds of
+ * caller:
+ *
+ *  - First-party app surfaces (the editor, admin, marketing) are in
+ *    `trustedOrigins` and need credentialed requests so the session cookie is
+ *    sent and the response is readable.
+ *
+ *  - Public pages on user custom domains, whose origin we can't enumerate.
+ *    These only ever call session-free endpoints (reactions, form
+ *    submissions), so they get CORS *without* credentials.
+ *
+ * Reflecting the origin without credentials is safe: no cookie is attached, so
+ * an untrusted caller can only reach data that is already public. Echoing an
+ * arbitrary origin *with* credentials would let any site read a logged-in
+ * user's data.
+ */
+await fastify.register(
+  cors,
+  () =>
+    async (request: FastifyRequest): Promise<FastifyCorsOptions> => ({
+      origin: true, // reflect; @fastify/cors also sets `Vary: Origin`
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+      exposedHeaders: ['Content-Length'], // Expose specific headers
+      credentials: isTrustedOrigin(request.headers.origin),
+      maxAge: 86400, // Cache preflight response for 24 hours
+    })
+);
 
 fastify.register(coreRoutes);
 fastify.register(marketingRoutes, { prefix: '/marketing' });
@@ -84,9 +127,8 @@ fastify.register(spotifyServiceRoutes, {
   prefix: '/services/spotify',
 });
 
-// fastify.register(FastifyBetterAuth, { auth });
-
 fastify.decorate('authenticate', authenticateDecorator);
+fastify.decorate('authenticateApiKey', authenticateApiKeyDecorator);
 
 Sentry.setupFastifyErrorHandler(fastify);
 
@@ -98,15 +140,15 @@ fastify.addHook('onSend', async (request, reply) => {
   }
 });
 
-fastify.addHook('onRequest', async (request, reply) => {
+fastify.addHook('onRequest', async (request) => {
   request.startTime = Date.now();
 });
 
-fastify.addHook('onResponse', async (request, reply) => {
+fastify.addHook('onResponse', async (request) => {
   if (request.startTime) {
     const responseTime = Date.now() - request.startTime;
     if (responseTime > 200) {
-      console.log(`Request to ${request.raw.url} took ${responseTime}ms`);
+      request.log.warn({ url: request.raw.url, responseTime }, 'Slow request');
     }
   }
 });

@@ -93,6 +93,11 @@ export function EditWrapper({ children, layoutProps }: Props) {
     if (nextToAddBlock) {
       handleAddNewBlock([], nextToAddBlock, null, true);
     }
+    // handleAddNewBlock is intentionally omitted: it is redefined on every
+    // render, so depending on it would re-run this effect - and add the block
+    // again - on renders where nextToAddBlock has not changed. This should
+    // fire only when a new block is queued.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextToAddBlock]);
 
   const handleAddNewBlock = async (
@@ -186,10 +191,9 @@ export function EditWrapper({ children, layoutProps }: Props) {
       // Persist the layout with the new block BEFORE router.refresh() so
       // the server-rendered children and the saved layout agree about
       // which blocks exist on this page.
-      const layoutResponse = await InternalApi.post(
-        `/pages/${pageId}/layout`,
-        { newLayout: layoutWithNewBlock }
-      );
+      const layoutResponse = await InternalApi.post(`/pages/${pageId}/layout`, {
+        newLayout: layoutWithNewBlock,
+      });
 
       if (layoutResponse.error) {
         toast({
@@ -222,7 +226,10 @@ export function EditWrapper({ children, layoutProps }: Props) {
     };
   }, []);
 
-  const handleLayoutChange = (newLayout: Layout[], _currentLayouts: Layouts) => {
+  const handleLayoutChange = (
+    newLayout: Layout[],
+    _currentLayouts: Layouts
+  ) => {
     if (newLayout.length === 0 || !layout) return;
     if (newLayout.some((block) => block.i === 'tmp-block')) return;
     // While a drop is mid-flight, handleAddNewBlock owns the layout save.

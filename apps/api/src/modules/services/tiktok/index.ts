@@ -1,18 +1,9 @@
 import { getTiktokUserInfo, requestToken, tiktokScopes } from './service';
 import { decrypt, encrypt, isEncrypted } from '@/lib/encrypt';
 import prisma from '@/lib/prisma';
-import {
-  blockCacheTag,
-  pageIdCacheTag,
-  revalidatePageCache,
-} from '@/lib/revalidate';
+import { linkIntegrationToBlock } from '@/modules/integrations/service';
 import { captureException } from '@sentry/node';
-import {
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-  RouteOptions,
-} from 'fastify';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 // Define TikTok user info response type
 interface TikTokUserInfoResponse {
@@ -32,8 +23,7 @@ interface EncryptedState {
 }
 
 export default async function tiktokServiceRoutes(
-  fastify: FastifyInstance,
-  opts: RouteOptions
+  fastify: FastifyInstance
 ): Promise<void> {
   fastify.get('/', getTiktokRedirectHandler);
   fastify.get('/callback', getTiktokCallbackHandler);
@@ -180,20 +170,15 @@ async function getTiktokCallbackHandler(
 
     // If the state is present, we need to update the block with the integration id
     if (state) {
-      if (decryptedState?.blockId) {
-        const blockId = decryptedState.blockId;
-
-        const linkedBlock = await prisma?.block.update({
-          where: { id: blockId },
-          data: { integrationId: integration?.id },
+      if (decryptedState?.blockId && integration?.id) {
+        // Scoped to the caller: the block id comes from a query string they
+        // control, so an unscoped update would let them attach this
+        // integration to someone else's block.
+        await linkIntegrationToBlock({
+          blockId: decryptedState.blockId,
+          integrationId: integration.id,
+          userId: session.user.id,
         });
-
-        if (linkedBlock) {
-          void revalidatePageCache([
-            blockCacheTag(blockId),
-            pageIdCacheTag(linkedBlock.pageId),
-          ]);
-        }
       }
     }
 

@@ -1,10 +1,12 @@
 import prisma from '../../lib/prisma';
-import { isReservedSlug } from '@/lib/slugs';
-import { isForbiddenSlug } from '@/lib/slugs';
-import { regexSlug } from '@/lib/slugs';
 import { makeId } from '@/modules/pages/utils';
 import { captureException } from '@sentry/node';
 import { headerBlockDefaults } from '@trylinky/blocks';
+import {
+  isForbiddenSlug,
+  isReservedSlug,
+  regexSlug,
+} from '@trylinky/common/slugs';
 import { Prisma } from '@trylinky/prisma';
 import { randomUUID } from 'crypto';
 
@@ -215,12 +217,10 @@ export async function checkUserHasAccessToPage(pageId: string, userId: string) {
 export async function createNewPage({
   slug,
   themeId,
-  userId,
   organizationId,
 }: {
   slug: string;
   themeId: string;
-  userId: string;
   organizationId: string;
 }) {
   const existingPage = await prisma.page.findUnique({

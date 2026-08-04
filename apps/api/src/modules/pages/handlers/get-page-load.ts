@@ -38,11 +38,13 @@ export async function getPageLoadHandler(
 ): Promise<Static<(typeof getPageLoadSchema.response)[200]>> {
   const { pageId } = request.params;
 
-  const headers = request.headers;
+  const isInternalCaller = await request.server.authenticateApiKey(
+    request,
+    response,
+    { throwError: false }
+  );
 
-  const apiKey = headers['x-api-key'];
-
-  if (!apiKey || apiKey !== process.env.INTERNAL_API_KEY) {
+  if (!isInternalCaller) {
     return response.forbidden();
   }
 
@@ -73,7 +75,13 @@ export async function getPageLoadHandler(
   const plan = page.organization?.subscription?.plan;
   const isPaid = plan === 'premium' || plan === 'team';
 
-  const { organization, publishedAt, verifiedAt, ...rest } = page;
+  // `_organization` is destructured only to keep it out of `rest`.
+  const {
+    organization: _organization,
+    publishedAt,
+    verifiedAt,
+    ...rest
+  } = page;
 
   return response.status(200).send({
     ...rest,
