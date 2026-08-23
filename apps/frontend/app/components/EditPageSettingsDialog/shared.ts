@@ -12,6 +12,7 @@ export const generalPageSettingsSchema = z.object({
   pageSlug: z.string({ required_error: 'Please provide a page slug' }),
   metaTitle: z.string({ required_error: 'Please provide a page title' }),
   published: z.boolean(),
+  customDomain: z.string().optional(),
 });
 
 export type ThemeData = {

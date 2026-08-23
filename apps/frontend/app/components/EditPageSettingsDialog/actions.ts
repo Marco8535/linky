@@ -34,6 +34,7 @@ export const fetchPageSettings = async (slug: string) => {
       metaDescription: true,
       backgroundImage: true,
       themeId: true,
+      customDomain: true,
     },
   });
 
@@ -108,7 +109,7 @@ export const updateGeneralPageSettings = async (
     };
   }
 
-  const { metaTitle, pageSlug, published } = validatedFields.data;
+  const { metaTitle, pageSlug, published, customDomain } = validatedFields.data;
 
   if (!pageSlug || !metaTitle) {
     return {
@@ -193,6 +194,7 @@ export const updateGeneralPageSettings = async (
       metaTitle,
       slug: pageSlug,
       publishedAt: published ? new Date() : null,
+      customDomain: customDomain?.trim() || null,
     },
     select: {
       id: true,

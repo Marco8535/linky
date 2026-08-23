@@ -24,6 +24,7 @@ import { useState } from 'react';
 
 export type FormValues = {
   pageSlug: string;
+  customDomain: string;
   metaTitle: string;
   published: boolean;
 };
@@ -123,6 +124,7 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
           pageSlug: initialValues.pageSlug,
           metaTitle: initialValues.metaTitle,
           published: initialValues.published,
+          customDomain: initialValues.customDomain || '',
         }}
         validate={withZodSchema(generalPageSettingsSchema)}
         onSubmit={onSubmit}
@@ -184,6 +186,33 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
                       {errors.metaTitle && (
                         <Catalyst.ErrorMessage className="mt-2">
                           {errors.metaTitle}
+                        </Catalyst.ErrorMessage>
+                      )}
+                    </Catalyst.Field>
+
+                    <Catalyst.Field>
+                      <Catalyst.Label htmlFor="customDomain">
+                        Custom domain
+                      </Catalyst.Label>
+                      <Catalyst.Description>
+                        Point the domain&apos;s CNAME at
+                        cname.vercel-dns.com and add it to the Vercel project
+                        first. Leave empty to serve the page on the default
+                        handle.
+                      </Catalyst.Description>
+                      <FormikField name="customDomain">
+                        {({ field }: { field: { value: string } }) => (
+                          <Catalyst.Input
+                            {...field}
+                            id="customDomain"
+                            placeholder="links.midominio.com"
+                            invalid={!!errors.customDomain}
+                          />
+                        )}
+                      </FormikField>
+                      {errors.customDomain && (
+                        <Catalyst.ErrorMessage className="mt-2">
+                          {errors.customDomain}
                         </Catalyst.ErrorMessage>
                       )}
                     </Catalyst.Field>

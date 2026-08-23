@@ -53,7 +53,7 @@ export const auth = betterAuth({
       process.env.NODE_ENV === 'production'
         ? {
             enabled: true,
-            domain: '.lin.ky',
+            domain: process.env.AUTH_COOKIE_DOMAIN || '.lin.ky',
           }
         : {
             enabled: false,

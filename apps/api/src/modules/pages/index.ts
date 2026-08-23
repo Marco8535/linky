@@ -319,7 +319,7 @@ async function createPageHandler(
     },
   });
 
-  const maxNumberOfPages = 100;
+  const maxNumberOfPages = 10000;
 
   if (teamPageCount >= maxNumberOfPages) {
     const user = await prisma.user.findUnique({

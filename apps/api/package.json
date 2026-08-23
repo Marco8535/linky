@@ -56,7 +56,7 @@
     "test": "dotenvx run --quiet -f ../../.env.local --ignore=MISSING_ENV_FILE -- vitest run",
     "lint": "eslint .",
     "start:api": "node dist/index.js",
-    "build:api": "node build.js && pnpm run sentry:sourcemaps",
+    "build:api": "node build.js && ([ -n \"$SENTRY_AUTH_TOKEN\" ] && pnpm run sentry:sourcemaps || true)",
     "typecheck": "tsc --noEmit",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org hyperdusk --project glow-api ./dist && sentry-cli sourcemaps upload ./dist --org hyperdusk --project glow-api"
   }
