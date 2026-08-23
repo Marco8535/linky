@@ -207,11 +207,15 @@
       "outputs": ["dist/**"]
     },
     "typecheck": {
-      "dependsOn": ["^prisma:generate"],
+      // `^prisma:generate` only covers *dependencies*, so packages/prisma
+      // typechecked its own generated client before generating it — a race
+      // that passed locally and failed in CI. The unprefixed entry makes a
+      // package wait for its own generate too.
+      "dependsOn": ["^prisma:generate", "prisma:generate"],
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^prisma:generate"],
+      "dependsOn": ["^prisma:generate", "prisma:generate"],
       // apps/api has DB-backed integration tests. Turbo's strict env mode
       // withholds anything not declared here, so without these the suite
       // silently falls back to whatever .env.local points at.
