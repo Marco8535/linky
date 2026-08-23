@@ -1,0 +1,148 @@
+name: Upstream sync
+
+# Proposes upstream updates; never applies them. The PR this opens is the
+# approval gate: merging it is the OK. Nothing reaches production until then,
+# and the API on Oracle is always redeployed by hand afterwards.
+
+on:
+  schedule:
+    # Mondays 12:00 UTC — 09:00 in Argentina.
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: https://github.com/trylinky/linky.git
+
+jobs:
+  propose:
+    name: Open a sync PR if upstream moved
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM_REPO" || git remote set-url upstream "$UPSTREAM_REPO"
+          git fetch upstream main --quiet
+
+      - name: Measure the gap
+        id: gap
+        run: |
+          behind=$(git rev-list --count main..upstream/main)
+          ahead=$(git rev-list --count upstream/main..main)
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          echo "ahead=$ahead" >> "$GITHUB_OUTPUT"
+          echo "Estamos $behind commits atras y $ahead adelante."
+
+      - name: Nothing to do
+        if: steps.gap.outputs.behind == '0'
+        run: echo "main ya esta al dia con upstream."
+
+      # Our own commits sit on top of upstream (the 2026-08 sync rebuilt them
+      # that way), so a rebase is the natural update. A conflict means a patch
+      # needs a human decision, which is reported instead of guessed at.
+      - name: Rebase our patches onto upstream
+        if: steps.gap.outputs.behind != '0'
+        id: rebase
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="sync/upstream-$(date -u +%Y-%m-%d)"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          git checkout -B "$branch" main
+          if git rebase upstream/main; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+            git diff --name-only --diff-filter=U > /tmp/conflicts.txt || true
+            git rebase --abort || true
+          fi
+
+      - name: Summarise what changed
+        if: steps.gap.outputs.behind != '0'
+        id: summary
+        run: |
+          {
+            echo 'body<<SYNC_EOF'
+            echo "Upstream avanzo **${{ steps.gap.outputs.behind }} commits**."
+            echo
+            if [ "${{ steps.rebase.outputs.clean }}" != "true" ]; then
+              echo '> **El rebase no aplica limpio.** Estos archivos conflictuan y necesitan una decision a mano:'
+              echo
+              sed 's/^/> - /' /tmp/conflicts.txt
+              echo
+            fi
+            echo '### Revisar con atencion'
+            echo
+            flagged=$(git log --oneline main..upstream/main --regexp-ignore-case \
+              --grep='security' --grep='CVE' --grep='harden' --grep='auth' --grep='cors' || true)
+            if [ -n "$flagged" ]; then
+              echo '**Seguridad o autenticacion:**'
+              echo '```'
+              echo "$flagged"
+              echo '```'
+            else
+              echo '- Sin commits de seguridad o autenticacion.'
+            fi
+            echo
+            migrations=$(git diff --name-only main..upstream/main -- packages/prisma/prisma/migrations | \
+              cut -d/ -f5 | sort -u || true)
+            if [ -n "$migrations" ]; then
+              echo '**Migraciones de base nuevas** — el redeploy de la API va a mano y con backup previo:'
+              echo '```'
+              echo "$migrations"
+              echo '```'
+            else
+              echo '- Sin migraciones de base nuevas.'
+            fi
+            echo
+            echo '### Todos los commits'
+            echo '```'
+            git log --oneline main..upstream/main | head -100
+            echo '```'
+            echo
+            echo '---'
+            echo 'Mergear este PR = tu OK. Vercel deploya el frontend solo al mergear.'
+            echo '**La API en Oracle no se actualiza sola**: despues del merge hay que correr'
+            echo '`/opt/linky/scripts/deploy-api.sh` en `arm-oracle-worker`.'
+            echo 'SYNC_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Push the branch
+        if: steps.gap.outputs.behind != '0' && steps.rebase.outputs.clean == 'true'
+        run: git push --force-with-lease origin "${{ steps.rebase.outputs.branch }}"
+
+      - name: Open or update the PR
+        if: steps.gap.outputs.behind != '0' && steps.rebase.outputs.clean == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="${{ steps.rebase.outputs.branch }}"
+          if gh pr view "$branch" >/dev/null 2>&1; then
+            gh pr edit "$branch" --body "${{ steps.summary.outputs.body }}"
+          else
+            gh pr create --base main --head "$branch" \
+              --title "Sync con upstream ($(date -u +%Y-%m-%d))" \
+              --body "${{ steps.summary.outputs.body }}"
+          fi
+
+      # A conflicting rebase has no PR to review, so the report goes to an issue.
+      - name: Report a conflicting sync
+        if: steps.gap.outputs.behind != '0' && steps.rebase.outputs.clean != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Sync con upstream necesita resolucion a mano ($(date -u +%Y-%m-%d))" \
+            --body "${{ steps.summary.outputs.body }}"
