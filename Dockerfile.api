@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────
 # Stage 1: Builder — install deps, generate Prisma, bundle API
 # ─────────────────────────────────────────────
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 RUN apt-get update && \
     apt-get install -y openssl python3 make g++ && \
@@ -41,7 +41,7 @@ RUN cd apps/api && node build.production.js
 # ─────────────────────────────────────────────
 # Stage 2: Runtime — minimal image with only what's needed
 # ─────────────────────────────────────────────
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 
 RUN apt-get update && \
     apt-get install -y openssl libvips-dev && \
