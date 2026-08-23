@@ -148,7 +148,8 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
                       <Catalyst.Label htmlFor="pageSlug">Handle</Catalyst.Label>
                       <div className="mt-3 flex">
                         <span className="inline-flex items-center rounded-l-lg border border-r-0 border-zinc-950/10 bg-zinc-50 px-3 text-sm text-zinc-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400">
-                          lin.ky/
+                          {/* The domain this deployment actually serves, not lin.ky. */}
+                          {process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'lin.ky'}/
                         </span>
                         <FormikField name="pageSlug">
                           {({ field }: { field: { value: string } }) => (
