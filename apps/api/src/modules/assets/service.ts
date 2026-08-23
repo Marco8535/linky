@@ -32,7 +32,7 @@ const uploadStream = (fileName: string, contentType: string) => {
   const upload = new Upload({
     client: s3,
     params: {
-      Bucket: `${process.env.APP_ENV}.glow.user-uploads`,
+      Bucket: process.env.S3_BUCKET_NAME || `${process.env.APP_ENV}.glow.user-uploads`,
       Key: fileName,
       ContentType: contentType,
       Body: passThrough,
@@ -106,10 +106,11 @@ export async function uploadAsset({
 
     // Check if uploads are successful
     if (isComplete(webpUpload) && isComplete(pngUpload)) {
-      const fileLocation =
-        process.env.APP_ENV === 'development'
-          ? `https://cdn.dev.lin.ky/${webpUpload.Key}`
-          : `https://cdn.lin.ky/${webpUpload.Key}`;
+      const cdnBaseUrl = process.env.CDN_URL
+        || (process.env.APP_ENV === 'development'
+          ? 'https://cdn.dev.lin.ky'
+          : 'https://cdn.lin.ky');
+      const fileLocation = `${cdnBaseUrl.replace(/\/$/, '')}/${webpUpload.Key}`;
 
       return {
         data: {

@@ -1,5 +1,6 @@
 import { validateEmail } from '@/lib/email';
 import prisma from '@/lib/prisma';
+import { stripeClient } from '@/lib/stripe';
 import { createNewStripeCustomer } from '@/modules/billing/utils/create-new-stripe-customer';
 import { createNewSubscription } from '@/modules/billing/utils/create-new-subscription';
 import { createNewOrganization } from '@/modules/organizations/utils';
@@ -20,30 +21,47 @@ export async function handleUserCreated({ userId }: { userId: string }) {
     type: 'personal',
   });
 
-  const isValidEmail = validateEmail(user.email);
+  if (stripeClient) {
+    // Stripe is configured — create customer and subscription via Stripe
+    const isValidEmail = validateEmail(user.email);
 
-  const customer = await createNewStripeCustomer({
-    email: isValidEmail ? (user.email as string) : '',
-    name: user.name ?? '',
-    userId: user.id,
-    organizationId: newOrg.id,
-  });
+    const customer = await createNewStripeCustomer({
+      email: isValidEmail ? (user.email as string) : '',
+      name: user.name ?? '',
+      userId: user.id,
+      organizationId: newOrg.id,
+    });
 
-  if (!customer) {
-    throw Error(`Error creating Stripe customer for user ${user.id}`);
-  }
+    if (!customer) {
+      throw Error(`Error creating Stripe customer for user ${user.id}`);
+    }
 
-  const newSubscription = await createNewSubscription({
-    plan: 'premium',
-    stripeCustomerId: customer.id,
-    referenceId: newOrg.id,
-    periodStart: new Date(),
-    periodEnd: new Date(),
-    isTrialing: true,
-  });
+    const newSubscription = await createNewSubscription({
+      plan: 'premium',
+      stripeCustomerId: customer.id,
+      referenceId: newOrg.id,
+      periodStart: new Date(),
+      periodEnd: new Date(),
+      isTrialing: true,
+    });
 
-  if (!newSubscription) {
-    throw Error('Error creating subscription');
+    if (!newSubscription) {
+      throw Error('Error creating subscription');
+    }
+  } else {
+    // Self-hosted mode — grant premium directly without Stripe
+    const newSubscription = await createNewSubscription({
+      plan: 'premium',
+      stripeCustomerId: 'self-hosted',
+      referenceId: newOrg.id,
+      periodStart: new Date(),
+      periodEnd: new Date('2099-12-31'),
+      isTrialing: false,
+    });
+
+    if (!newSubscription) {
+      throw Error('Error creating subscription');
+    }
   }
 
   return newOrg.id;

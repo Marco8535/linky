@@ -40,7 +40,7 @@ export async function createNewSubscription({
   let trialEnd: Date | undefined;
 
   // If the subscription ID is not provided, create a new one
-  if (!subscriptionId) {
+  if (!subscriptionId && stripeClient) {
     const [stripeSubscriptionError, stripeSubscription] = await safeAwait(
       stripeClient.subscriptions.create({
         customer: stripeCustomerId,
@@ -66,9 +66,12 @@ export async function createNewSubscription({
       : undefined;
 
     subscriptionId = stripeSubscription.id;
+  } else if (!subscriptionId && !stripeClient) {
+    // Self-hosted mode: generate a local subscription ID
+    subscriptionId = `self-hosted-${referenceId}`;
   }
 
-  const DEFAULT_SEATS = plan === 'team' ? 5 : 1;
+  const DEFAULT_SEATS = plan === 'team' ? 99 : 99;
 
   const [subscriptionError, subscription] = await safeAwait(
     prisma.subscription.create({
