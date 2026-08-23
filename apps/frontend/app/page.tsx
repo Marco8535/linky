@@ -12,10 +12,23 @@ import { useEffect, useState } from 'react';
 export default function RootPage() {
   const [isLoading, setIsLoading] = useState(true);
 
+  // The editor's auth gate sends logged-out users here with the path they were
+  // after. Only same-site paths are honoured, so the parameter cannot be used
+  // to bounce someone to another origin after login.
+  const returnPath = () => {
+    const requested = new URLSearchParams(window.location.search).get(
+      'redirectTo'
+    );
+
+    return requested?.startsWith('/') && !requested.startsWith('//')
+      ? requested
+      : '/edit';
+  };
+
   useEffect(() => {
     auth.getSession().then((session) => {
       if (session?.data?.user) {
-        window.location.href = '/edit';
+        window.location.href = returnPath();
       } else {
         setIsLoading(false);
       }
@@ -25,7 +38,7 @@ export default function RootPage() {
   const handleGoogleLogin = () => {
     auth.signIn.social({
       provider: 'google',
-      callbackURL: `${window.location.origin}/edit`,
+      callbackURL: `${window.location.origin}${returnPath()}`,
     });
   };
 

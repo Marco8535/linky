@@ -68,9 +68,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   transpilePackages: ['@trylinky/ui', '@trylinky/common', '@trylinky/seo'],
   // Full Cache Components / PPR: the public page shell prerenders, cached
   // data ('use cache' in page-actions) serves from cache, and only dynamic
