@@ -1,5 +1,6 @@
 'use strict';
 
+import { automationTokenHook } from '@/lib/automation-token';
 import {
   createPageSchema,
   deletePageSchema,
@@ -45,6 +46,8 @@ import { FastifyInstance, FastifyReply } from 'fastify';
 import { FastifyRequest } from 'fastify';
 
 export default async function pagesRoutes(fastify: FastifyInstance) {
+  fastify.addHook('onRequest', automationTokenHook);
+
   fastify.get(
     '/me',
     { schema: getCurrentUserTeamPagesSchema },

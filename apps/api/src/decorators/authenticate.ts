@@ -18,6 +18,11 @@ export async function authenticateDecorator(
     throwError: true,
   }
 ): Promise<AuthenticatedSession | null> {
+  // Set only on routes that opted into machine tokens (see lib/automation-token).
+  if (request.automationSession) {
+    return request.automationSession;
+  }
+
   try {
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(request.headers),

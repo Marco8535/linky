@@ -1,5 +1,6 @@
 'use strict';
 
+import { automationTokenHook } from '@/lib/automation-token';
 import {
   createBlockSchema,
   deleteBlockSchema,
@@ -26,6 +27,8 @@ import { FastifyInstance, FastifyReply } from 'fastify';
 import { FastifyRequest } from 'fastify';
 
 export default async function blocksRoutes(fastify: FastifyInstance) {
+  fastify.addHook('onRequest', automationTokenHook);
+
   fastify.post('/add', { schema: createBlockSchema }, postCreateBlockHandler);
   fastify.get('/:blockId', { schema: getBlockSchema }, getBlockHandler);
   fastify.delete(
