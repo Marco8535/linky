@@ -2,7 +2,10 @@ import { hslToHex } from '@/lib/theme';
 import { ImageResponse } from 'next/og';
 import { CSSProperties } from 'react';
 
-export const runtime = 'edge';
+// Node runtime, not edge: bundled with next/og this route weighs ~1.06 MB, and
+// Vercel caps Edge Functions at 1 MB on the Hobby plan, which fails the deploy
+// after a successful build. Node functions have no such ceiling here.
+export const runtime = 'nodejs';
 
 export const size = {
   width: 1200,
