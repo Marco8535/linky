@@ -1,6 +1,5 @@
 'use strict';
 
-import { automationTokenHook } from '@/lib/automation-token';
 import {
   createBlockSchema,
   deleteBlockSchema,
@@ -16,6 +15,7 @@ import {
   getEnabledBlocks,
   updateBlockData,
 } from './service';
+import { automationTokenHook } from '@/lib/automation-token';
 import { createPosthogClient } from '@/lib/posthog';
 import prisma from '@/lib/prisma';
 import {

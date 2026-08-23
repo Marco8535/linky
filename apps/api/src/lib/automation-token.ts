@@ -157,9 +157,7 @@ export async function automationTokenHook(
     return;
   }
 
-  const session = await resolveAutomationSession(
-    request.headers.authorization
-  );
+  const session = await resolveAutomationSession(request.headers.authorization);
 
   if (session) {
     request.automationSession = session;

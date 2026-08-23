@@ -1,6 +1,5 @@
 'use strict';
 
-import { automationTokenHook } from '@/lib/automation-token';
 import {
   createPageSchema,
   deletePageSchema,
@@ -23,6 +22,7 @@ import {
   getPageThemeById,
   updatePageLayout,
 } from './service';
+import { automationTokenHook } from '@/lib/automation-token';
 import { createPosthogClient } from '@/lib/posthog';
 import prisma from '@/lib/prisma';
 import {

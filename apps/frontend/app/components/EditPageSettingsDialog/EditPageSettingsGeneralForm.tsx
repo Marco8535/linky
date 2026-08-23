@@ -196,10 +196,9 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
                         Custom domain
                       </Catalyst.Label>
                       <Catalyst.Description>
-                        Point the domain&apos;s CNAME at
-                        cname.vercel-dns.com and add it to the Vercel project
-                        first. Leave empty to serve the page on the default
-                        handle.
+                        Point the domain&apos;s CNAME at cname.vercel-dns.com
+                        and add it to the Vercel project first. Leave empty to
+                        serve the page on the default handle.
                       </Catalyst.Description>
                       <FormikField name="customDomain">
                         {({ field }: { field: { value: string } }) => (
