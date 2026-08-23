@@ -2,7 +2,7 @@
 
 > Deployment para **Amalgama Gastronomica** - plataforma link-in-bio para multiples sub-marcas.
 >
-> Ultima actualizacion: 2026-02-21
+> Ultima actualizacion: 2026-08-23 (sync con upstream; ver ficha 91 del repo SocialMedia)
 
 ---
 
@@ -17,7 +17,7 @@
                                │              │
                     ┌──────────▼──────┐  ┌────▼──────────────────┐
                     │   Vercel (Free) │  │  Cloudflare Tunnel    │
-                    │   Next.js 15    │  │  (zero puertos)       │
+                    │   Next.js 16    │  │  (zero puertos)       │
                     │   Frontend SSR  │  └────┬──────────────────┘
                     └──────────┬──────┘       │
                                │         ┌────▼──────────────────┐
@@ -68,7 +68,7 @@
 | **PostHog** | Product analytics | Free | Opcional | 1M eventos/mes gratis |
 
 **Requisitos locales:**
-- Node.js 20+
+- Node.js 24 (lo que fija `.nvmrc`; la imagen de la API tambien va en `node:24-slim`)
 - pnpm 9+
 - Docker + Docker Compose
 - Git
@@ -117,10 +117,10 @@ DIRECT_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=
      ```
      https://api.tudominio.com/api/auth/callback/google
      ```
-5. Copiar:
+5. Copiar (ojo con los nombres: el codigo lee `AUTH_GOOGLE_*`, no `GOOGLE_*`):
    ```
-   GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
+   AUTH_GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
+   AUTH_GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
    ```
 
 > **Nota**: Si la app esta en "Testing", solo usuarios agregados manualmente pueden hacer login. Para produccion, publicar la app (requiere verificacion de Google si usas scopes sensibles, pero email/profile/openid no lo requieren).
@@ -344,42 +344,72 @@ nano .env.production
 
 Completar `.env.production` con todos los valores recopilados:
 
+> Los nombres de abajo son los que el codigo lee de verdad (verificados contra
+> `.env.production` del deployment en produccion, 23/08/2026). La version anterior de esta
+> guia inventaba varios — `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `APP_URL`,
+> `S3_ACCESS_KEY`, `STRIPE_ENABLED`, `DYNAMODB_ENABLED` — que **no existen en el codigo**;
+> seguirlos producia un deployment que no arranca.
+
 ```env
+# === Entorno ===
+NODE_ENV=production
+APP_ENV=production
+PORT=3001
+
 # === Base de Datos ===
-DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
-DIRECT_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=require
+# Pooled para la app, direct para las migraciones de Prisma.
+DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
+DIRECT_URL=postgresql://user:pass@ep-xxx.sa-east-1.aws.neon.tech/neondb?sslmode=require
 
 # === Auth ===
-BETTER_AUTH_SECRET=<generar con: openssl rand -base64 32>
-GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
+AUTH_SECRET=<openssl rand -base64 32>
+ENCRYPTION_KEY=<openssl rand -base64 32>
+AUTH_TRUST_HOST=true
+AUTH_GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
+AUTH_GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
+# El dominio padre de las dos puntas, para que la cookie de sesion cruce subdominios.
+AUTH_COOKIE_DOMAIN=.tudominio.com
 
 # === URLs ===
-APP_URL=https://links.tudominio.com
-API_URL=https://api.tudominio.com
-FRONTEND_URL=https://links.tudominio.com
+# API_BASE_URL debe ser la URL publica de la API: better-auth arma con ella el
+# redirect_uri de OAuth. BETTER_AUTH_URL apunta al mismo lugar.
+API_BASE_URL=https://linky-api.tudominio.com
+BETTER_AUTH_URL=https://linky-api.tudominio.com
+APP_FRONTEND_URL=https://links.tudominio.com
+# Origenes que pueden mandar credenciales. Sin esto la API cae en los de lin.ky.
+TRUSTED_ORIGINS=https://links.tudominio.com,https://linky-api.tudominio.com
 
-# === Cloudflare Tunnel ===
-CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoixxxxxxxxx...
+# === Clave interna (API <-> frontend) ===
+# La usa el puente de revalidacion de cache. Tiene que ser IDENTICA a la del
+# proyecto de Vercel, o las paginas publicas no se invalidan y nadie avisa.
+INTERNAL_API_KEY=<openssl rand -hex 32>
 
 # === AWS S3 ===
-S3_ACCESS_KEY=AKIAxxxxxxxxxxxxxxxx
-S3_SECRET_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-S3_BUCKET=linky-amalgama-uploads
-S3_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx
+AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AWS_REGION=sa-east-1
+S3_BUCKET_NAME=linky-amalgama-uploads
+CDN_URL=https://cdn.tudominio.com
 
-# === Email ===
-RESEND_API_KEY=re_xxxxxxxxxx
+# === Token de automatizacion (opcional) ===
+# Deja que n8n o un script editen paginas y bloques sin sesion de browser.
+# Actua como el usuario indicado, que debe ser miembro de la organizacion.
+# Solo lo aceptan las rutas /pages y /blocks; billing y auth nunca.
+LINKY_AUTOMATION_TOKEN=<openssl rand -hex 32>
+LINKY_AUTOMATION_USER_ID=<id de la tabla "User">
 
-# === Analytics (opcionales) ===
-TINYBIRD_API_KEY=p.eyJ...
-SENTRY_DSN=https://xxxxx@oXXXXX.ingest.sentry.io/XXXXXXX
-
-# === Stripe (DESHABILITADO) ===
-STRIPE_ENABLED=false
-
-# === DynamoDB Reactions (DESHABILITADO) ===
-DYNAMODB_ENABLED=false
+# === Opcionales: si no estan, la feature se apaga sola ===
+# Stripe: sin esta clave, todos los usuarios son premium y las rutas de
+# billing quedan mockeadas (modo self-hosted).
+# STRIPE_API_SECRET_KEY=
+# STRIPE_WEBHOOK_SECRET=
+# Reactions: sin tabla configurada, no se instancia el cliente de DynamoDB.
+# REACTIONS_TABLE_NAME=
+# SLACK_TOKEN=          # avisos de alta de usuario
+# RESEND_API_KEY=       # email transaccional
+# TINYBIRD_API_KEY=     # analytics de clicks
+# SENTRY_DSN=           # error tracking
+# POSTHOG_API_KEY=      # product analytics
 ```
 
 ### Inicializar base de datos
@@ -587,11 +617,26 @@ docker compose -f docker-compose.production.yml up -d --build
 docker compose -f docker-compose.production.yml logs -f api
 ```
 
-O si existe el script:
+O, mas corto:
 
 ```bash
 ./scripts/deploy-api.sh
 ```
+
+> **Si el pull trae migraciones de Prisma, backup primero.** Son las unicas actualizaciones
+> que no se revierten volviendo el codigo atras:
+>
+> ```bash
+> DU=$(sudo grep -E "^DIRECT_URL=" /opt/linky/.env.production | cut -d= -f2- | tr -d '"')
+> sudo docker run --rm -e PGURL="$DU" postgres:17-alpine sh -c 'pg_dump "$PGURL"' \
+>   | gzip | sudo tee /opt/linky/backups/pre-sync-$(date +%Y%m%d_%H%M%S).sql.gz > /dev/null
+> ```
+>
+> Y antes de reconstruir, etiquetar la imagen que esta corriendo para poder volver:
+>
+> ```bash
+> sudo docker tag linky-api:latest linky-api:pre-$(date +%Y%m%d)
+> ```
 
 ### Actualizacion del Frontend
 
@@ -634,13 +679,52 @@ find /opt/linky/backups/ -name "*.dump" -mtime +30 -delete
 **Causa**: Las cookies de sesion requieren que `APP_URL` y `API_URL` esten en el mismo dominio raiz, o que la configuracion de cookies permita cross-domain.
 
 **Solucion**:
-1. Verificar que `APP_URL` y `API_URL` usan el mismo dominio raiz:
-   ```
-   APP_URL=https://links.tudominio.com   # OK - mismo dominio
-   API_URL=https://api.tudominio.com     # OK - mismo dominio
-   ```
-2. Revisar `TRUSTED_ORIGINS` incluye el frontend URL
-3. Verificar que Cloudflare no esta strippeando headers `Set-Cookie`
+1. Verificar que `APP_FRONTEND_URL` y `API_BASE_URL` cuelgan del mismo dominio raiz, y que
+   `AUTH_COOKIE_DOMAIN` es ese dominio raiz con punto adelante (`.tudominio.com`).
+2. Revisar que `TRUSTED_ORIGINS` incluye la URL del frontend.
+3. Verificar que Cloudflare no esta strippeando headers `Set-Cookie`.
+
+### Redirect loop entre el editor y el login
+
+**Sintoma**: el login con Google termina bien, el cliente ve la sesion, pero al entrar a `/e`
+el editor rebota a `/?redirectTo=...` y de ahi vuelve al editor, en loop. El chequeo de sesion
+del **lado cliente** pasa y el del **lado servidor** falla.
+
+**Causa**: los server components leen la sesion con
+`getSession({ fetchOptions: { headers: await headers() } })`, es decir le reenvian a la API
+**todos** los headers del request entrante, incluido `host: <dominio del frontend>`. Mandado a
+la API, que vive en otro dominio, ese Host enruta el pedido de vuelta al frontend, que responde
+404. La sesion vuelve vacia siempre.
+
+**Diagnostico** (reproduce la falla en dos comandos):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://linky-api.tudominio.com/api/auth/get-session
+# 200
+curl -s -o /dev/null -w "%{http_code}\n" https://linky-api.tudominio.com/api/auth/get-session \
+  -H "Host: links.tudominio.com"
+# 404  <- el pedido nunca llego a la API
+```
+
+**Solucion**: reenviar solo la cookie, que es lo unico que el endpoint de sesion necesita. Ya
+esta hecho en `apps/frontend/app/lib/auth.ts`; si alguien vuelve a pasar `headers()` entero,
+el loop reaparece.
+
+> Historia util: esto se habia diagnosticado como "el tunel devuelve respuestas mal
+> descomprimidas" y se habia parcheado desactivando el chequeo de state, el `cookieCache` y el
+> atributo `partitioned` de las cookies. Ninguno de esos tres hacia falta.
+
+### El build pasa pero el deploy de Vercel falla
+
+**Sintoma**: `next build` termina bien y el deployment queda en `Error`, con un mensaje sobre
+el tamano de una Edge Function.
+
+**Causa**: `app/[domain]/[slug]/opengraph-image.tsx` bundleado con `next/og` pesa ~1,06 MB, y
+el plan Hobby de Vercel corta las Edge Functions en 1 MB. El limite se evalua al desplegar, no
+al compilar.
+
+**Solucion**: esa ruta declara `export const runtime = 'nodejs'`. Las funciones Node no tienen
+ese techo. No volver a ponerla en `edge`.
 
 ### Errores de CORS
 
