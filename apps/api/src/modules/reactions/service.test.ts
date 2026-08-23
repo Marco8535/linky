@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// These tests exercise the path where reactions ARE configured, so the table
+// name has to exist before ./service is imported — the module reads it once at
+// load time to decide whether to talk to DynamoDB at all.
+//
+// It used to pass without this: with the variable unset, both the module and
+// the stub below coerced `undefined` into the string "undefined" and matched
+// each other by accident.
+process.env.REACTIONS_TABLE_NAME ??= 'reactions-test';
+
 // DynamoDB is the only external dependency here; stub it at the client
 // boundary so the allowance logic can be tested directly.
 const send = vi.fn();
