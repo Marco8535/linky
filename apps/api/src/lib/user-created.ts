@@ -1,6 +1,6 @@
 import { validateEmail } from '@/lib/email';
 import prisma from '@/lib/prisma';
-import { stripeClient } from '@/lib/stripe';
+import { isStripeEnabled } from '@/lib/stripe';
 import { createNewStripeCustomer } from '@/modules/billing/utils/create-new-stripe-customer';
 import { createNewSubscription } from '@/modules/billing/utils/create-new-subscription';
 import { createNewOrganization } from '@/modules/organizations/utils';
@@ -21,7 +21,7 @@ export async function handleUserCreated({ userId }: { userId: string }) {
     type: 'personal',
   });
 
-  if (stripeClient) {
+  if (isStripeEnabled) {
     // Stripe is configured — create customer and subscription via Stripe
     const isValidEmail = validateEmail(user.email);
 

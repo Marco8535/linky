@@ -10,19 +10,29 @@ import { captureException } from '@sentry/node';
 
 const TABLE_NAME = process.env.REACTIONS_TABLE_NAME;
 
-// Self-hosted deployments run without DynamoDB: skip the client entirely when
-// no table is configured, and short-circuit every read/write below.
-const dynamoDb = TABLE_NAME
-  ? DynamoDBDocumentClient.from(
-      new DynamoDBClient({
-        region: process.env.AWS_REGION,
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
-        },
-      })
-    )
-  : null;
+/**
+ * False on self-hosted deployments, which run without DynamoDB. Every exported
+ * function below short-circuits when it is false, so reactions read as zero
+ * rather than erroring.
+ */
+export const areReactionsEnabled = Boolean(TABLE_NAME);
+
+// Typed as always-present: nothing dereferences it without first checking
+// `areReactionsEnabled`, and narrowing a module const does not survive into the
+// nested helpers below.
+const dynamoDb = (
+  TABLE_NAME
+    ? DynamoDBDocumentClient.from(
+        new DynamoDBClient({
+          region: process.env.AWS_REGION,
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+          },
+        })
+      )
+    : null
+) as DynamoDBDocumentClient;
 
 export const MAX_ALLOWED_REACTIONS_PER_IP = 16;
 
@@ -53,7 +63,7 @@ export async function getReactionsForPageId({
     [reactionType: string]: number;
   };
 }> {
-  if (!dynamoDb || !TABLE_NAME) {
+  if (!areReactionsEnabled) {
     return { total: {}, current: {} };
   }
 
@@ -116,7 +126,7 @@ export async function incrementReaction({
   ipAddress: string;
   reactionType: ReactionType;
 }) {
-  if (!dynamoDb || !TABLE_NAME) {
+  if (!areReactionsEnabled) {
     return;
   }
 
@@ -211,7 +221,7 @@ export async function reactToResource(
   ipAddress: string,
   reactionType: ReactionType = DEFAULT_REACTION_TYPE
 ) {
-  if (!dynamoDb || !TABLE_NAME) {
+  if (!areReactionsEnabled) {
     return { total: {}, current: {} };
   }
 

@@ -1,6 +1,6 @@
 import { prices } from '@/lib/plans';
 import prisma from '@/lib/prisma';
-import { stripeClient } from '@/lib/stripe';
+import { isStripeEnabled, stripeClient } from '@/lib/stripe';
 import { captureException } from '@sentry/node';
 import safeAwait from 'safe-await';
 
@@ -40,7 +40,7 @@ export async function createNewSubscription({
   let trialEnd: Date | undefined;
 
   // If the subscription ID is not provided, create a new one
-  if (!subscriptionId && stripeClient) {
+  if (!subscriptionId && isStripeEnabled) {
     const [stripeSubscriptionError, stripeSubscription] = await safeAwait(
       stripeClient.subscriptions.create({
         customer: stripeCustomerId,
@@ -66,7 +66,7 @@ export async function createNewSubscription({
       : undefined;
 
     subscriptionId = stripeSubscription.id;
-  } else if (!subscriptionId && !stripeClient) {
+  } else if (!subscriptionId && !isStripeEnabled) {
     // Self-hosted mode: generate a local subscription ID
     subscriptionId = `self-hosted-${referenceId}`;
   }
