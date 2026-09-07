@@ -22,7 +22,11 @@ export function classifyLinkKind(hostname: string | null): BioLinkKind {
 
   const host = hostname.toLowerCase();
 
-  if (host === 'wa.me' || host.endsWith('.wa.me') || host.endsWith('.whatsapp.com')) {
+  if (
+    host === 'wa.me' ||
+    host.endsWith('.wa.me') ||
+    host.endsWith('.whatsapp.com')
+  ) {
     return 'whatsapp';
   }
 

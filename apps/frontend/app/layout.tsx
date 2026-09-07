@@ -1,9 +1,6 @@
 import './globals.css';
 import './react-grid-layout.scss';
-import {
-  GoogleTagManagerNoScript,
-  GoogleTagManagerScript,
-} from '@/app/gtm';
+import { GoogleTagManagerNoScript, GoogleTagManagerScript } from '@/app/gtm';
 import { getSession } from '@/app/lib/auth';
 import { PostHogIdentify, PostHogProvider } from '@/app/posthog-provider';
 import { Toaster } from '@trylinky/ui';
