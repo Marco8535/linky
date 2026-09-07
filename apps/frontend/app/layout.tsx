@@ -1,5 +1,9 @@
 import './globals.css';
 import './react-grid-layout.scss';
+import {
+  GoogleTagManagerNoScript,
+  GoogleTagManagerScript,
+} from '@/app/gtm';
 import { getSession } from '@/app/lib/auth';
 import { PostHogIdentify, PostHogProvider } from '@/app/posthog-provider';
 import { Toaster } from '@trylinky/ui';
@@ -83,9 +87,11 @@ export default function RootLayout({
             defer={true}
           />
         )}
+        <GoogleTagManagerScript />
       </head>
       <PostHogProvider>
         <body className="bg-stone-50 min-h-screen relative">
+          <GoogleTagManagerNoScript />
           {children}
           <Toaster />
         </body>
