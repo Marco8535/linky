@@ -30,7 +30,10 @@ export function classifyLinkKind(hostname: string | null): BioLinkKind {
     return 'instagram';
   }
 
-  if (host.includes('menu')) {
+  // Menu sites are published on a dedicated `menu.` subdomain (e.g.
+  // menu.empanadascalientes.ar). Match the leading label rather than a bare
+  // substring, so hostnames that merely contain "menu" aren't misclassified.
+  if (host === 'menu' || host.startsWith('menu.')) {
     return 'menu';
   }
 
