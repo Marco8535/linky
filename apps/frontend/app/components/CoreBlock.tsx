@@ -1,6 +1,7 @@
 'use client';
 
 import { EditBlockToolbar } from './EditBlockToolbar';
+import { trackBioLinkClick } from '@/lib/analytics/bio-link-click';
 import { BlockProps } from '@/lib/blocks/ui';
 import { cn } from '@trylinky/ui';
 import { TriangleAlert } from 'lucide-react';
@@ -68,6 +69,7 @@ export function CoreBlock({
         target="_blank"
         rel="noopener noreferrer"
         className={classes}
+        onClick={() => trackBioLinkClick(href, blockType)}
       >
         {content}
       </Link>

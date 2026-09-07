@@ -69,7 +69,6 @@ export default async function PageLayout(props: {
               <ShareButton />
             </div>
             {children}
-
           </div>
         </main>
       ) : (
